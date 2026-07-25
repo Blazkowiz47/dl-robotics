@@ -42,7 +42,7 @@ jobs:
         run: uv python install 3.11
 
       - name: Remove unreleased local source override
-        run: uv lock --no-sources
+        run: uv lock --no-sources --refresh-package deep-learning-core
 
       - name: Install locked dependencies
         run: uv sync --locked --no-sources --extra dev --python 3.11
