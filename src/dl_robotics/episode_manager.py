@@ -72,14 +72,6 @@ class RoboticsEpisodeManager(StandardEpisodeManager):
         **statistics: float,
     ) -> dict[str, float]:
         """Return generic and MAPF-specific episode metrics."""
-        return self._summarize_episode(record, result, **statistics)
-
-    def _summarize_episode(
-        self,
-        record: EpisodeRecord,
-        result: EpisodeResult,
-        **statistics: float,
-    ) -> dict[str, float]:
         metrics = super().summarize_episode(record, result, **statistics)
         final_info = result.final_info
         for info_key, metric_key in (
@@ -105,16 +97,6 @@ class RoboticsEpisodeManager(StandardEpisodeManager):
                 float(reached_agents) / float(total_agents)
             )
         return metrics
-
-    def end_episode(
-        self,
-        environment_index: int,
-        result: EpisodeResult,
-        *,
-        phase: str | None = None,
-    ) -> EpisodeRecord:
-        """Finalize metrics, trajectories, and configured visual artifacts."""
-        return self._end_episode(environment_index, result, phase=phase)
 
     def _end_episode(
         self,

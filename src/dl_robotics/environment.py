@@ -18,79 +18,6 @@ from .world import GridWorldBatch, InteractionRule, StepEvents
 class _GridMAPFMixin:
     """Shared preallocated observation and reward implementation."""
 
-    def _setup(self, config: dict[str, Any], *, num_worlds: int) -> None:
-        scenario_config = config.get("scenario")
-        if not isinstance(scenario_config, dict):
-            raise TypeError("environment.scenario must be a mapping")
-        self.scenario = GridScenario.from_config(scenario_config)
-        self.scenario_fingerprint = self.scenario.fingerprint
-        reward_config = config.get("rewards", {})
-        if not isinstance(reward_config, dict):
-            raise TypeError("environment.rewards must be a mapping")
-        self.step_reward = float(reward_config.get("step", -0.01))
-        self.progress_reward = float(reward_config.get("progress", 0.1))
-        self.collision_reward = float(reward_config.get("collision", -0.25))
-        self.goal_reward = float(reward_config.get("goal", 1.0))
-        self.success_reward = float(reward_config.get("success", 5.0))
-        reward_values = np.asarray(
-            [
-                self.step_reward,
-                self.progress_reward,
-                self.collision_reward,
-                self.goal_reward,
-                self.success_reward,
-            ]
-        )
-        if not np.isfinite(reward_values).all():
-            raise ValueError("Environment rewards must be finite")
-        interaction_rule = config.get("interaction_rule")
-        if interaction_rule is not None and not isinstance(
-            interaction_rule,
-            InteractionRule,
-        ):
-            raise TypeError("environment.interaction_rule must be an InteractionRule")
-        self.world = GridWorldBatch(
-            self.scenario,
-            num_worlds=num_worlds,
-            interaction_rule=interaction_rule,
-        )
-        render_config = config.get("render", {})
-        if not isinstance(render_config, dict):
-            raise TypeError("environment.render must be a mapping")
-        self.renderer = GridRenderer(
-            cell_size=render_config.get("cell_size", 48),
-            show_grid=render_config.get("show_grid", True),
-        )
-        self.single_action_space = gym.spaces.Discrete(
-            5**self.scenario.num_agents
-        )
-        self.single_observation_space = gym.spaces.Box(
-            low=-1.0,
-            high=1.0,
-            shape=(7, self.scenario.height, self.scenario.width),
-            dtype=np.float32,
-        )
-
-    def _decode_actions(self, joint_actions: np.ndarray) -> np.ndarray:
-        values = np.asarray(joint_actions)
-        if values.shape != (self.world.num_worlds,):
-            raise ValueError(
-                f"Joint actions must have shape ({self.world.num_worlds},)"
-            )
-        if not np.issubdtype(values.dtype, np.integer):
-            raise TypeError("Joint actions must use an integer dtype")
-        if np.any(values < 0) or np.any(values >= self.single_action_space.n):
-            raise ValueError("Joint action is outside the configured space")
-        actor_actions = np.empty(
-            (self.world.num_worlds, self.scenario.num_agents),
-            dtype=np.int32,
-        )
-        remaining = values.astype(np.int64, copy=True)
-        for actor_index in range(self.scenario.num_agents):
-            actor_actions[:, actor_index] = remaining % 5
-            remaining //= 5
-        return actor_actions
-
     def _observations(self) -> np.ndarray:
         observations = np.zeros(
             (
@@ -142,43 +69,6 @@ class _GridMAPFMixin:
                 columns,
             ] = self.world.accelerations[:, actor_index, 1] / 2.0
         return observations
-
-    def _advance(
-        self,
-        joint_actions: np.ndarray,
-    ) -> tuple[
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        list[dict[str, Any]],
-    ]:
-        before_distance = np.abs(
-            self.world.positions
-            - self.world.goal_positions
-        ).sum(axis=(1, 2))
-        events = self.world.step(self._decode_actions(joint_actions))
-        after_distance = np.abs(
-            self.world.positions
-            - self.world.goal_positions
-        ).sum(axis=(1, 2))
-        success = self.world.reached.all(axis=1)
-        rewards = (
-            self.step_reward
-            + self.progress_reward * (before_distance - after_distance)
-            + self.collision_reward * events.collisions
-            + self.goal_reward * events.newly_reached
-            + self.success_reward * success
-        ).astype(np.float32)
-        truncated = np.logical_and(
-            self.world.steps >= self.scenario.max_steps,
-            ~success,
-        )
-        infos = [
-            self._info(world_index, events, bool(success[world_index]))
-            for world_index in range(self.world.num_worlds)
-        ]
-        return self._observations(), rewards, success, truncated, infos
 
     def _info(
         self,
@@ -241,7 +131,60 @@ class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
     metadata: ClassVar[dict[str, Any]] = {"render_modes": ["rgb_array"]}
 
     def __init__(self, config: dict[str, Any]):
-        self._setup(config, num_worlds=1)
+        scenario_config = config.get("scenario")
+        if not isinstance(scenario_config, dict):
+            raise TypeError("environment.scenario must be a mapping")
+        self.scenario = GridScenario.from_config(scenario_config)
+        self.scenario_fingerprint = self.scenario.fingerprint
+
+        reward_config = config.get("rewards", {})
+        if not isinstance(reward_config, dict):
+            raise TypeError("environment.rewards must be a mapping")
+        self.step_reward = float(reward_config.get("step", -0.01))
+        self.progress_reward = float(reward_config.get("progress", 0.1))
+        self.collision_reward = float(reward_config.get("collision", -0.25))
+        self.goal_reward = float(reward_config.get("goal", 1.0))
+        self.success_reward = float(reward_config.get("success", 5.0))
+        reward_values = np.asarray(
+            [
+                self.step_reward,
+                self.progress_reward,
+                self.collision_reward,
+                self.goal_reward,
+                self.success_reward,
+            ]
+        )
+        if not np.isfinite(reward_values).all():
+            raise ValueError("Environment rewards must be finite")
+
+        interaction_rule = config.get("interaction_rule")
+        if interaction_rule is not None and not isinstance(
+            interaction_rule,
+            InteractionRule,
+        ):
+            raise TypeError("environment.interaction_rule must be an InteractionRule")
+        self.world = GridWorldBatch(
+            self.scenario,
+            num_worlds=1,
+            interaction_rule=interaction_rule,
+        )
+
+        render_config = config.get("render", {})
+        if not isinstance(render_config, dict):
+            raise TypeError("environment.render must be a mapping")
+        self.renderer = GridRenderer(
+            cell_size=render_config.get("cell_size", 48),
+            show_grid=render_config.get("show_grid", True),
+        )
+        self.single_action_space = gym.spaces.Discrete(
+            5**self.scenario.num_agents
+        )
+        self.single_observation_space = gym.spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(7, self.scenario.height, self.scenario.width),
+            dtype=np.float32,
+        )
         self.action_space = self.single_action_space
         self.observation_space = self.single_observation_space
 
@@ -277,15 +220,51 @@ class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
         self,
         action: int,
     ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
-        observations, rewards, terminated, truncated, infos = self._advance(
-            np.asarray([action])
+        joint_actions = np.asarray([action])
+        if joint_actions.shape != (1,):
+            raise ValueError("Joint actions must have shape (1,)")
+        if not np.issubdtype(joint_actions.dtype, np.integer):
+            raise TypeError("Joint actions must use an integer dtype")
+        if np.any(joint_actions < 0) or np.any(
+            joint_actions >= self.single_action_space.n
+        ):
+            raise ValueError("Joint action is outside the configured space")
+        actor_actions = np.empty(
+            (1, self.scenario.num_agents),
+            dtype=np.int32,
         )
+        remaining = joint_actions.astype(np.int64, copy=True)
+        for actor_index in range(self.scenario.num_agents):
+            actor_actions[:, actor_index] = remaining % 5
+            remaining //= 5
+
+        before_distance = np.abs(
+            self.world.positions - self.world.goal_positions
+        ).sum(axis=(1, 2))
+        events = self.world.step(actor_actions)
+        after_distance = np.abs(
+            self.world.positions - self.world.goal_positions
+        ).sum(axis=(1, 2))
+        terminated = self.world.reached.all(axis=1)
+        rewards = (
+            self.step_reward
+            + self.progress_reward * (before_distance - after_distance)
+            + self.collision_reward * events.collisions
+            + self.goal_reward * events.newly_reached
+            + self.success_reward * terminated
+        ).astype(np.float32)
+        truncated = np.logical_and(
+            self.world.steps >= self.scenario.max_steps,
+            ~terminated,
+        )
+        observations = self._observations()
+        info = self._info(0, events, bool(terminated[0]))
         return (
             observations[0],
             float(rewards[0]),
             bool(terminated[0]),
             bool(truncated[0]),
-            infos[0],
+            info,
         )
 
     def render(self) -> np.ndarray:
@@ -319,7 +298,61 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
         if num_envs <= 0:
             raise ValueError("environment.num_envs must be positive")
         self.num_envs = num_envs
-        self._setup(config, num_worlds=num_envs)
+
+        scenario_config = config.get("scenario")
+        if not isinstance(scenario_config, dict):
+            raise TypeError("environment.scenario must be a mapping")
+        self.scenario = GridScenario.from_config(scenario_config)
+        self.scenario_fingerprint = self.scenario.fingerprint
+
+        reward_config = config.get("rewards", {})
+        if not isinstance(reward_config, dict):
+            raise TypeError("environment.rewards must be a mapping")
+        self.step_reward = float(reward_config.get("step", -0.01))
+        self.progress_reward = float(reward_config.get("progress", 0.1))
+        self.collision_reward = float(reward_config.get("collision", -0.25))
+        self.goal_reward = float(reward_config.get("goal", 1.0))
+        self.success_reward = float(reward_config.get("success", 5.0))
+        reward_values = np.asarray(
+            [
+                self.step_reward,
+                self.progress_reward,
+                self.collision_reward,
+                self.goal_reward,
+                self.success_reward,
+            ]
+        )
+        if not np.isfinite(reward_values).all():
+            raise ValueError("Environment rewards must be finite")
+
+        interaction_rule = config.get("interaction_rule")
+        if interaction_rule is not None and not isinstance(
+            interaction_rule,
+            InteractionRule,
+        ):
+            raise TypeError("environment.interaction_rule must be an InteractionRule")
+        self.world = GridWorldBatch(
+            self.scenario,
+            num_worlds=num_envs,
+            interaction_rule=interaction_rule,
+        )
+
+        render_config = config.get("render", {})
+        if not isinstance(render_config, dict):
+            raise TypeError("environment.render must be a mapping")
+        self.renderer = GridRenderer(
+            cell_size=render_config.get("cell_size", 48),
+            show_grid=render_config.get("show_grid", True),
+        )
+        self.single_action_space = gym.spaces.Discrete(
+            5**self.scenario.num_agents
+        )
+        self.single_observation_space = gym.spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(7, self.scenario.height, self.scenario.width),
+            dtype=np.float32,
+        )
         self.action_space = batch_space(self.single_action_space, num_envs)
         self.observation_space = batch_space(
             self.single_observation_space,
@@ -396,7 +429,50 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
         np.ndarray,
         dict[str, Any],
     ]:
-        observations, rewards, terminated, truncated, infos = self._advance(actions)
+        joint_actions = np.asarray(actions)
+        if joint_actions.shape != (self.num_envs,):
+            raise ValueError(
+                f"Joint actions must have shape ({self.num_envs},)"
+            )
+        if not np.issubdtype(joint_actions.dtype, np.integer):
+            raise TypeError("Joint actions must use an integer dtype")
+        if np.any(joint_actions < 0) or np.any(
+            joint_actions >= self.single_action_space.n
+        ):
+            raise ValueError("Joint action is outside the configured space")
+        actor_actions = np.empty(
+            (self.num_envs, self.scenario.num_agents),
+            dtype=np.int32,
+        )
+        remaining = joint_actions.astype(np.int64, copy=True)
+        for actor_index in range(self.scenario.num_agents):
+            actor_actions[:, actor_index] = remaining % 5
+            remaining //= 5
+
+        before_distance = np.abs(
+            self.world.positions - self.world.goal_positions
+        ).sum(axis=(1, 2))
+        events = self.world.step(actor_actions)
+        after_distance = np.abs(
+            self.world.positions - self.world.goal_positions
+        ).sum(axis=(1, 2))
+        terminated = self.world.reached.all(axis=1)
+        rewards = (
+            self.step_reward
+            + self.progress_reward * (before_distance - after_distance)
+            + self.collision_reward * events.collisions
+            + self.goal_reward * events.newly_reached
+            + self.success_reward * terminated
+        ).astype(np.float32)
+        truncated = np.logical_and(
+            self.world.steps >= self.scenario.max_steps,
+            ~terminated,
+        )
+        observations = self._observations()
+        infos = [
+            self._info(index, events, bool(terminated[index]))
+            for index in range(self.num_envs)
+        ]
         done = np.logical_or(terminated, truncated)
         if done.any():
             final_observations = observations.copy()

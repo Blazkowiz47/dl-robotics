@@ -164,15 +164,6 @@ def write_animation(
     fps: int = 8,
 ) -> Path:
     """Write RGB frames to a GIF or MP4 selected by the path suffix."""
-    return _write_animation(path, frames, fps=fps)
-
-
-def _write_animation(
-    path: str | Path,
-    frames: list[Any] | NDArray[np.uint8],
-    *,
-    fps: int = 8,
-) -> Path:
     if isinstance(fps, bool) or not isinstance(fps, int):
         raise TypeError("fps must be an integer")
     if fps <= 0:

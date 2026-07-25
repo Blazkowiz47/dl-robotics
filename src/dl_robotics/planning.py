@@ -73,14 +73,6 @@ def astar_path(
     goal: Coordinate,
 ) -> GridPath:
     """Return an exact shortest path using the Manhattan A* heuristic."""
-    return _astar_path(scenario, start, goal)
-
-
-def _astar_path(
-    scenario: GridScenario,
-    start: Coordinate,
-    goal: Coordinate,
-) -> GridPath:
     _validate_endpoints(scenario, start, goal)
     if start == goal:
         return (start,)
@@ -132,14 +124,6 @@ def dijkstra_path(
     goal: Coordinate,
 ) -> GridPath:
     """Return an exact shortest path using Dijkstra's algorithm."""
-    return _dijkstra_path(scenario, start, goal)
-
-
-def _dijkstra_path(
-    scenario: GridScenario,
-    start: Coordinate,
-    goal: Coordinate,
-) -> GridPath:
     _validate_endpoints(scenario, start, goal)
     if start == goal:
         return (start,)
@@ -179,14 +163,6 @@ def bfs_path(
     goal: Coordinate,
 ) -> GridPath:
     """Return an exact shortest path using breadth-first search."""
-    return _bfs_path(scenario, start, goal)
-
-
-def _bfs_path(
-    scenario: GridScenario,
-    start: Coordinate,
-    goal: Coordinate,
-) -> GridPath:
     _validate_endpoints(scenario, start, goal)
     if start == goal:
         return (start,)
@@ -216,14 +192,6 @@ def dfs_path(
     goal: Coordinate,
 ) -> GridPath:
     """Return a deterministic depth-first path without optimality guarantees."""
-    return _dfs_path(scenario, start, goal)
-
-
-def _dfs_path(
-    scenario: GridScenario,
-    start: Coordinate,
-    goal: Coordinate,
-) -> GridPath:
     _validate_endpoints(scenario, start, goal)
     if start == goal:
         return (start,)
