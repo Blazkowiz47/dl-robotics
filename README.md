@@ -24,6 +24,8 @@ Version `0.0.1` requires `deep-learning-core>=0.0.27,<0.1`.
 - semantic channel observations containing walls, actors, goals, velocity, and
   acceleration
 - headless RGB rendering plus direct GIF and MP4 episode output
+- exact A*, Dijkstra, and BFS utilities for static single-agent shortest paths,
+  plus deterministic DFS for reachability and debugging
 - a `robotics` episode manager for collision, completion, makespan,
   sum-of-costs, path-length, trajectory, and media artifacts
 
@@ -115,3 +117,40 @@ The first version uses vectorized geometry and preallocated state arrays, with
 small per-world conflict-resolution loops where agent dependencies require
 them. It does not model continuous rigid-body dynamics, ROS, Gazebo, or 3D
 simulation.
+
+## Shortest-Path Baselines
+
+Use A* for efficient exact planning on the unit-cost grid, or Dijkstra when a
+heuristic-free reference is useful:
+
+```python
+from dl_robotics import (
+    GridScenario,
+    astar_path,
+    bfs_path,
+    dfs_path,
+    dijkstra_path,
+)
+
+scenario = GridScenario(
+    width=5,
+    height=5,
+    starts=((0, 0), (4, 4)),
+    goals=((4, 4), (0, 0)),
+    walls=((1, 2), (3, 2)),
+)
+
+astar = astar_path(scenario, scenario.starts[0], scenario.goals[0])
+dijkstra = dijkstra_path(scenario, scenario.starts[1], scenario.goals[1])
+bfs = bfs_path(scenario, scenario.starts[0], scenario.goals[0])
+dfs = dfs_path(scenario, scenario.starts[1], scenario.goals[1])
+```
+
+Paths include both endpoints and use four-direction movement around static
+walls. Their move count is therefore `len(path) - 1`. A*, Dijkstra, and BFS
+return shortest paths on this unweighted grid. DFS returns the first
+depth-first route and does not guarantee optimality. Traversal ties use the
+fixed up, right, down, left order. The exact planners provide per-agent lower
+bounds and deterministic evaluation baselines; independently planned paths can
+still have vertex or edge conflicts and are not, by themselves, a multi-agent
+path-finding solver.

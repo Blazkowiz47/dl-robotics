@@ -2,6 +2,14 @@
 
 from .environment import GridMAPFEnvironment, GridMAPFVectorEnvironment
 from .episode_manager import RoboticsEpisodeManager
+from .planning import (
+    GridPath,
+    PathNotFoundError,
+    astar_path,
+    bfs_path,
+    dfs_path,
+    dijkstra_path,
+)
 from .rendering import GridRenderer, write_animation
 from .scenario import Coordinate, GridScenario
 from .world import ExclusiveCellRule, GridWorldBatch, InteractionRule, StepEvents
@@ -13,12 +21,18 @@ __all__ = [
     "ExclusiveCellRule",
     "GridMAPFEnvironment",
     "GridMAPFVectorEnvironment",
+    "GridPath",
     "GridRenderer",
     "GridScenario",
     "GridWorldBatch",
     "InteractionRule",
+    "PathNotFoundError",
     "RoboticsEpisodeManager",
     "StepEvents",
     "__version__",
+    "astar_path",
+    "bfs_path",
+    "dfs_path",
+    "dijkstra_path",
     "write_animation",
 ]
