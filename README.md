@@ -3,6 +3,14 @@
 Fast, reproducible 2D robotics environments for
 [`deep-learning-core`](https://github.com/Blazkowiz47/dl-core).
 
+## Install
+
+```bash
+pip install deep-learning-robotics
+```
+
+Version `0.0.1` requires `deep-learning-core>=0.0.27,<0.1`.
+
 ## What's New in 0.0.1?
 
 - validated grid scenarios with walls, actor starts, and per-actor goals

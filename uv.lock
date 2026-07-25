@@ -153,8 +153,8 @@ nvtx = [
 
 [[package]]
 name = "deep-learning-core"
-version = "0.0.26"
-source = { registry = "https://pypi.org/simple" }
+version = "0.0.27"
+source = { editable = "../dl-core" }
 dependencies = [
     { name = "albumentations" },
     { name = "gymnasium" },
@@ -170,10 +170,28 @@ dependencies = [
     { name = "torchvision" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/29/33/853d7bf9304fd2c6671776e2757f08f23c751345670d8efedebfcf2324c1/deep_learning_core-0.0.26.tar.gz", hash = "sha256:b38623cd8e174e5614716fb8b1a569614a94835dcc12d374fa38fb03580a5827", size = 536893, upload-time = "2026-07-19T13:14:56.499Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/b1/9797c65898a3d25301b4252a4a9f86f4e3d365a59621b361b62271419711/deep_learning_core-0.0.26-py3-none-any.whl", hash = "sha256:8f4ce93b69f90fd079b2dbcabcc5f6e6d11578f86ba0e9731f91bf9a3885d583", size = 281413, upload-time = "2026-07-19T13:14:55.162Z" },
+
+[package.metadata]
+requires-dist = [
+    { name = "albumentations" },
+    { name = "deep-learning-azure", marker = "extra == 'azure'", specifier = ">=0.0.18,<0.1" },
+    { name = "deep-learning-mlflow", marker = "extra == 'mlflow'", specifier = ">=0.0.11,<0.1" },
+    { name = "deep-learning-wandb", marker = "extra == 'wandb'", specifier = ">=0.0.12,<0.1" },
+    { name = "gymnasium", specifier = ">=1.3,<2" },
+    { name = "numpy" },
+    { name = "opencv-python-headless" },
+    { name = "psutil" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
+    { name = "pyyaml" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.12" },
+    { name = "scikit-learn" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "tqdm" },
+    { name = "twine", marker = "extra == 'dev'", specifier = ">=6.0" },
 ]
+provides-extras = ["azure", "mlflow", "wandb", "dev"]
 
 [[package]]
 name = "deep-learning-robotics"
@@ -198,7 +216,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "deep-learning-core", specifier = ">=0.0.26,<0.1" },
+    { name = "deep-learning-core", editable = "../dl-core" },
     { name = "gymnasium", specifier = ">=1.3,<2" },
     { name = "imageio", specifier = ">=2.34" },
     { name = "imageio-ffmpeg", specifier = ">=0.5" },
