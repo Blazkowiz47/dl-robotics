@@ -9,7 +9,15 @@ Fast, reproducible 2D robotics environments for
 pip install deep-learning-robotics
 ```
 
-Version `0.0.1` requires `deep-learning-core>=0.0.27,<0.1`.
+Version `0.0.2` requires `deep-learning-core>=0.0.28,<0.1`.
+
+## What's New in 0.0.2?
+
+- environment setup, action decoding, simulation advancement, classical
+  planners, animation output, and episode summaries now keep one-off logic
+  inline for a more direct implementation
+- public environments, planners, rendering utilities, and episode-manager
+  behavior remain unchanged
 
 ## What's New in 0.0.1?
 

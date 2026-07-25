@@ -14,7 +14,7 @@ from .rendering import GridRenderer, write_animation
 from .scenario import Coordinate, GridScenario
 from .world import ExclusiveCellRule, GridWorldBatch, InteractionRule, StepEvents
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 __all__ = [
     "Coordinate",
