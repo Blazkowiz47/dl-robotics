@@ -1,0 +1,64 @@
+name: CI
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.10.1"
+
+      - name: Set up Python
+        env:
+          PYTHON_VERSION: ${{ matrix.python-version }}
+        run: uv python install "$PYTHON_VERSION"
+
+      - name: Remove unreleased local source override
+        run: uv lock --no-sources
+
+      - name: Install locked dependencies
+        env:
+          PYTHON_VERSION: ${{ matrix.python-version }}
+        run: uv sync --locked --no-sources --extra dev --python "$PYTHON_VERSION"
+
+      - name: Run Ruff
+        run: uv run --no-sync ruff check src tests
+
+      - name: Run tests
+        run: uv run --no-sync python -m pytest
+
+      - name: Compile package
+        run: uv run --no-sync python -m compileall src/dl_robotics
+
+      - name: Build distribution artifacts
+        run: uv build --no-sources
