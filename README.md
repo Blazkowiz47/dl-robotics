@@ -15,6 +15,9 @@ Fast, reproducible 2D robotics environments for
 - centralized joint actions compatible with dl-core DQN and PPO
 - semantic channel observations containing walls, actors, goals, velocity, and
   acceleration
+- headless RGB rendering plus direct GIF and MP4 episode output
+- a `robotics` episode manager for collision, completion, makespan,
+  sum-of-costs, path-length, trajectory, and media artifacts
 
 ## Environment Configuration
 
@@ -39,6 +42,17 @@ environment:
     collision: -0.25
     goal: 1.0
     success: 5.0
+  render:
+    cell_size: 48
+    show_grid: true
+
+episode_managers:
+  robotics:
+    capture_phases: [evaluation]
+    capture_every_n_episodes: 1
+    max_captured_episodes: 20
+    media_format: both
+    fps: 8
 ```
 
 Each actor chooses one of `stay`, `up`, `right`, `down`, or `left`. The
@@ -58,6 +72,28 @@ Episode info exposes `is_success`, collision counts, reached agents, makespan,
 sum of costs, and total path length for episode managers and experiment
 tracking. `collisions` and its typed variants describe the latest step;
 `episode_collisions` and its typed variants retain the episode totals.
+
+## Rendering and Episode Artifacts
+
+`environment.render()` returns RGB `uint8` arrays without opening a display:
+`[height, width, 3]` for the scalar environment and
+`[num_envs, height, width, 3]` for the vector environment.
+
+The `robotics` episode manager includes dl-core's standard episode metrics and
+trajectory capture, so it should be used in place of the `standard` manager.
+For selected phases and episode intervals it stores the complete compressed
+trajectory and optionally a GIF, MP4, or both. It also emits
+`robotics/collisions`, typed collision counts, reached fraction, makespan,
+sum of costs, and path length through normal callback and tracker flows.
+
+Media files can also be created directly:
+
+```python
+from dl_robotics import write_animation
+
+write_animation("episode.gif", frames, fps=8)
+write_animation("episode.mp4", frames, fps=8)
+```
 
 ## Interaction Rules
 

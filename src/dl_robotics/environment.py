@@ -10,6 +10,7 @@ from dl_core.core.registry import register_environment
 from gymnasium.vector import AutoresetMode
 from gymnasium.vector.utils import batch_space
 
+from .rendering import GridRenderer
 from .scenario import GridScenario
 from .world import GridWorldBatch, InteractionRule, StepEvents
 
@@ -52,6 +53,13 @@ class _GridMAPFMixin:
             self.scenario,
             num_worlds=num_worlds,
             interaction_rule=interaction_rule,
+        )
+        render_config = config.get("render", {})
+        if not isinstance(render_config, dict):
+            raise TypeError("environment.render must be a mapping")
+        self.renderer = GridRenderer(
+            cell_size=render_config.get("cell_size", 48),
+            show_grid=render_config.get("show_grid", True),
         )
         self.single_action_space = gym.spaces.Discrete(
             5**self.scenario.num_agents
@@ -106,8 +114,8 @@ class _GridMAPFMixin:
             observations[
                 :,
                 2,
-                self.world._goal_positions[actor_index, 0],
-                self.world._goal_positions[actor_index, 1],
+                self.world.goal_positions[actor_index, 0],
+                self.world.goal_positions[actor_index, 1],
             ] = (actor_index + 1) / agent_scale
             observations[
                 world_indices,
@@ -147,12 +155,12 @@ class _GridMAPFMixin:
     ]:
         before_distance = np.abs(
             self.world.positions
-            - self.world._goal_positions
+            - self.world.goal_positions
         ).sum(axis=(1, 2))
         events = self.world.step(self._decode_actions(joint_actions))
         after_distance = np.abs(
             self.world.positions
-            - self.world._goal_positions
+            - self.world.goal_positions
         ).sum(axis=(1, 2))
         success = self.world.reached.all(axis=1)
         rewards = (
@@ -230,7 +238,7 @@ class _GridMAPFMixin:
 class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
     """Scalar centralized MAPF environment."""
 
-    metadata: ClassVar[dict[str, Any]] = {"render_modes": []}
+    metadata: ClassVar[dict[str, Any]] = {"render_modes": ["rgb_array"]}
 
     def __init__(self, config: dict[str, Any]):
         self._setup(config, num_worlds=1)
@@ -280,12 +288,12 @@ class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
             infos[0],
         )
 
-    def render(self) -> np.ndarray | None:
-        """Return an RGB frame when rendering support is loaded."""
+    def render(self) -> np.ndarray:
+        """Return the current world as an RGB frame."""
         return self._render()
 
-    def _render(self) -> np.ndarray | None:
-        return None
+    def _render(self) -> np.ndarray:
+        return self.renderer.render_world(self.world)
 
     def close(self) -> None:
         """Release environment resources."""
@@ -300,7 +308,7 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
     """Native same-step vector MAPF environment."""
 
     metadata: ClassVar[dict[str, Any]] = {
-        "render_modes": [],
+        "render_modes": ["rgb_array"],
         "autoreset_mode": AutoresetMode.SAME_STEP,
     }
 
@@ -419,12 +427,17 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
             for key in infos[0]
         }
 
-    def render(self) -> np.ndarray | None:
-        """Return vector RGB frames when rendering support is loaded."""
+    def render(self) -> np.ndarray:
+        """Return every vector lane as an RGB frame batch."""
         return self._render()
 
-    def _render(self) -> np.ndarray | None:
-        return None
+    def _render(self) -> np.ndarray:
+        return np.stack(
+            [
+                self.renderer.render_world(self.world, world_index)
+                for world_index in range(self.num_envs)
+            ]
+        )
 
     def close(self) -> None:
         """Release environment resources."""

@@ -191,6 +191,20 @@ class GridWorldBatch:
         )
         self.reset()
 
+    @property
+    def start_positions(self) -> IntArray:
+        """Return a read-only view of configured actor starts."""
+        values = self._start_positions.view()
+        values.flags.writeable = False
+        return values
+
+    @property
+    def goal_positions(self) -> IntArray:
+        """Return a read-only view of configured actor goals."""
+        values = self._goal_positions.view()
+        values.flags.writeable = False
+        return values
+
     def reset(self, mask: BoolArray | None = None) -> None:
         """Reset selected worlds to their scenario starts."""
         self._reset(mask)
