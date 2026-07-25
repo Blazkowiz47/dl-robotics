@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "deep-learning-robotics"
+version = "0.0.1"
+description = "Fast 2D robotics and MAPF environments for deep-learning-core."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "blazkowiz47", email = "sushrutpatwardhan@gmail.com" },
+]
+keywords = [
+    "deep-reinforcement-learning",
+    "mapf",
+    "path-finding",
+    "robotics",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+dependencies = [
+    "deep-learning-core>=0.0.26,<0.1",
+    "gymnasium>=1.3,<2",
+    "numpy",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.12",
+]
+video = [
+    "imageio>=2.34",
+    "imageio-ffmpeg>=0.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/Blazkowiz47/dl-robotics"
+Repository = "https://github.com/Blazkowiz47/dl-robotics"
+Issues = "https://github.com/Blazkowiz47/dl-robotics/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dl_robotics"]
+
