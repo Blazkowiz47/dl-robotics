@@ -9,9 +9,9 @@ Fast, reproducible 2D robotics environments for
 pip install deep-learning-robotics
 ```
 
-Version `0.0.2` requires `deep-learning-core>=0.0.28,<0.1`.
+Version `0.0.3` requires `deep-learning-core>=0.0.28,<0.1`.
 
-## Unreleased
+## What's New in 0.0.3?
 
 - `dl-init --with-robotics` now adds `deep-learning-robotics`, a runnable
   `configs/robotics.yaml`, and organized `environments`, `rules`, `scenarios`,

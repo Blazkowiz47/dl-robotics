@@ -55,7 +55,7 @@ class RoboticsInitExtension(InitExtension):
         self._apply(context)
 
     def _apply(self, context: ScaffoldContext) -> None:
-        context.add_dependency("deep-learning-robotics")
+        context.add_dependency("deep-learning-robotics>=0.0.3,<0.1")
         context.append_bootstrap_import("import dl_robotics  # noqa: F401")
         context.append_bootstrap_import("import rules  # noqa: F401")
         context.append_bootstrap_import("import scenarios  # noqa: F401")

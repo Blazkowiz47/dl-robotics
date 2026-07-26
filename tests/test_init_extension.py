@@ -43,7 +43,10 @@ def test_robotics_init_extension_updates_scaffold(tmp_path: Path) -> None:
 
     RoboticsInitExtension().apply(context)
 
-    assert '"deep-learning-robotics"' in context.get_file("pyproject.toml")
+    assert (
+        '"deep-learning-robotics>=0.0.3,<0.1"'
+        in context.get_file("pyproject.toml")
+    )
     bootstrap = context.get_file(Path("src") / "bootstrap.py")
     assert "import dl_robotics" in bootstrap
     assert "import rules" in bootstrap
