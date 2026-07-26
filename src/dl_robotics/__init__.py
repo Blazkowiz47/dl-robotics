@@ -1,5 +1,6 @@
 """Fast 2D robotics environments for deep-learning-core."""
 
+from .cli import create_robotics_component
 from .environment import GridMAPFEnvironment, GridMAPFVectorEnvironment
 from .episode_manager import RoboticsEpisodeManager
 from .planning import (
@@ -32,6 +33,7 @@ __all__ = [
     "__version__",
     "astar_path",
     "bfs_path",
+    "create_robotics_component",
     "dfs_path",
     "dijkstra_path",
     "write_animation",

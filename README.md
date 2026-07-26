@@ -11,6 +11,15 @@ pip install deep-learning-robotics
 
 Version `0.0.2` requires `deep-learning-core>=0.0.28,<0.1`.
 
+## Unreleased
+
+- `dl-init --with-robotics` now adds `deep-learning-robotics`, a runnable
+  `configs/robotics.yaml`, and organized `environments`, `rules`, `scenarios`,
+  `callbacks`, and `episode_managers` packages to a normal dl-core experiment
+- `dl-robotics add environment|rule|scenario NAME` creates robotics-specific
+  local components without replacing dl-core's existing generators for models,
+  trainers, callbacks, and episode managers
+
 ## What's New in 0.0.2?
 
 - environment setup, action decoding, simulation advancement, classical
@@ -83,6 +92,44 @@ policy API instead of an exponentially growing joint action.
 The image observation is suitable for DQN and PPO. dl-core's tabular
 Q-learning trainer requires a `Discrete` observation space, so it is not
 compatible with this first image-observation environment.
+
+## Project Scaffolding
+
+Install `deep-learning-robotics` alongside dl-core, then use the same project
+initializer:
+
+```bash
+dl-init --name warehouse-mapf --with-robotics --no-prompt
+cd warehouse-mapf
+uv sync
+uv run dl-run --config configs/robotics.yaml --validate-only
+```
+
+The robotics extension preserves the usual dl-core layout and adds only the
+domain-specific folders:
+
+```text
+src/
+├── bootstrap.py
+├── callbacks/
+├── environments/
+├── episode_managers/
+├── models/
+├── rules/
+└── scenarios/
+```
+
+Use dl-core's `dl-core add` command for models, trainers, callbacks, and episode
+managers. Use the robotics command for environment-domain components:
+
+```bash
+dl-robotics add environment warehouse
+dl-robotics add rule priority
+dl-robotics add scenario crossing
+```
+
+Each generated module is imported from its package `__init__.py`, so
+`src/bootstrap.py` can import the package once during local component loading.
 
 The observation is a float32 tensor with shape `[7, height, width]`: walls,
 actor identity, goal identity, row/column velocity, and row/column acceleration.

@@ -49,6 +49,12 @@ Homepage = "https://github.com/Blazkowiz47/dl-robotics"
 Repository = "https://github.com/Blazkowiz47/dl-robotics"
 Issues = "https://github.com/Blazkowiz47/dl-robotics/issues"
 
+[project.scripts]
+dl-robotics = "dl_robotics.cli:main"
+
+[project.entry-points."dl_core.init_extensions"]
+robotics = "dl_robotics.init_extension:RoboticsInitExtension"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/dl_robotics"]
 
