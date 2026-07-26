@@ -11,8 +11,9 @@ from gymnasium.vector import AutoresetMode
 from gymnasium.vector.utils import batch_space
 
 from .rendering import GridRenderer
+from .rules import make_interaction_rule
 from .scenario import GridScenario
-from .world import GridWorldBatch, InteractionRule, StepEvents
+from .world import GridWorldBatch, StepEvents
 
 
 class _GridMAPFMixin:
@@ -157,16 +158,12 @@ class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
         if not np.isfinite(reward_values).all():
             raise ValueError("Environment rewards must be finite")
 
-        interaction_rule = config.get("interaction_rule")
-        if interaction_rule is not None and not isinstance(
-            interaction_rule,
-            InteractionRule,
-        ):
-            raise TypeError("environment.interaction_rule must be an InteractionRule")
         self.world = GridWorldBatch(
             self.scenario,
             num_worlds=1,
-            interaction_rule=interaction_rule,
+            interaction_rule=make_interaction_rule(
+                config.get("interaction_rule")
+            ),
         )
 
         render_config = config.get("render", {})
@@ -325,16 +322,12 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
         if not np.isfinite(reward_values).all():
             raise ValueError("Environment rewards must be finite")
 
-        interaction_rule = config.get("interaction_rule")
-        if interaction_rule is not None and not isinstance(
-            interaction_rule,
-            InteractionRule,
-        ):
-            raise TypeError("environment.interaction_rule must be an InteractionRule")
         self.world = GridWorldBatch(
             self.scenario,
             num_worlds=num_envs,
-            interaction_rule=interaction_rule,
+            interaction_rule=make_interaction_rule(
+                config.get("interaction_rule")
+            ),
         )
 
         render_config = config.get("render", {})

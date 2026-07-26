@@ -12,12 +12,18 @@ from .planning import (
     dijkstra_path,
 )
 from .rendering import GridRenderer, write_animation
+from .rules import (
+    INTERACTION_RULE_REGISTRY,
+    make_interaction_rule,
+    register_interaction_rule,
+)
 from .scenario import Coordinate, GridScenario
 from .world import ExclusiveCellRule, GridWorldBatch, InteractionRule, StepEvents
 
 __version__ = "0.0.2"
 
 __all__ = [
+    "INTERACTION_RULE_REGISTRY",
     "Coordinate",
     "ExclusiveCellRule",
     "GridMAPFEnvironment",
@@ -36,5 +42,7 @@ __all__ = [
     "create_robotics_component",
     "dfs_path",
     "dijkstra_path",
+    "make_interaction_rule",
+    "register_interaction_rule",
     "write_animation",
 ]

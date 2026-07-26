@@ -29,7 +29,12 @@ def project_root(tmp_path: Path) -> Path:
             "environments",
             '@register_environment("warehouse")',
         ),
-        ("rule", "Priority", "rules", "class PriorityRule"),
+        (
+            "rule",
+            "Priority",
+            "rules",
+            '@register_interaction_rule("priority")',
+        ),
         (
             "scenario",
             "Narrow Crossing",

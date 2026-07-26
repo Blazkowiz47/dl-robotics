@@ -76,9 +76,10 @@ class {symbol_name}(GridMAPFEnvironment):
         symbol_name = f"{class_name}{class_suffix}"
         source = f'''"""Local actor interaction rule."""
 
-from dl_robotics import ExclusiveCellRule
+from dl_robotics import ExclusiveCellRule, register_interaction_rule
 
 
+@register_interaction_rule("{normalized_name}")
 class {symbol_name}(ExclusiveCellRule):
     """Customize exclusive-cell conflict handling for this experiment."""
 '''

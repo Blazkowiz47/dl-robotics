@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -35,6 +36,20 @@ class StepEvents:
 
 class InteractionRule(ABC):
     """Extensible resolver for simultaneous actor/object interactions."""
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> InteractionRule:
+        """Create a rule from serializable configuration."""
+        return cls._from_config(config)
+
+    @classmethod
+    def _from_config(cls, config: dict[str, Any]) -> InteractionRule:
+        if config:
+            fields = ", ".join(sorted(config))
+            raise ValueError(
+                f"{cls.__name__} does not accept configuration fields: {fields}"
+            )
+        return cls()
 
     @abstractmethod
     def resolve(

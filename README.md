@@ -19,6 +19,8 @@ Version `0.0.2` requires `deep-learning-core>=0.0.28,<0.1`.
 - `dl-robotics add environment|rule|scenario NAME` creates robotics-specific
   local components without replacing dl-core's existing generators for models,
   trainers, callbacks, and episode managers
+- interaction rules can be selected by registered name or YAML mapping while
+  existing programmatic `InteractionRule` instances remain supported
 
 ## What's New in 0.0.2?
 
@@ -69,6 +71,8 @@ environment:
     collision: -0.25
     goal: 1.0
     success: 5.0
+  interaction_rule:
+    name: exclusive_cell
   render:
     cell_size: 48
     show_grid: true
@@ -164,9 +168,28 @@ write_animation("episode.mp4", frames, fps=8)
 
 `GridWorldBatch` owns numerical state, while `InteractionRule` owns how proposed
 movements interact. `ExclusiveCellRule` provides MAPF-safe defaults. A custom
-rule instance can be supplied as `environment.interaction_rule` when an
-environment is created programmatically, without changing scenario definitions
-or RL adapters. Serializable rule registries are planned for a later release.
+rule can be registered and selected from normal YAML:
+
+```python
+from dl_robotics import ExclusiveCellRule, register_interaction_rule
+
+
+@register_interaction_rule("priority")
+class PriorityRule(ExclusiveCellRule):
+    """Replace or extend conflict handling for this experiment."""
+```
+
+```yaml
+environment:
+  interaction_rule:
+    name: priority
+```
+
+The short form `interaction_rule: exclusive_cell` is equivalent. Existing
+`InteractionRule` objects can still be supplied when constructing an
+environment programmatically. Rule mappings are passed to the registered
+class's `from_config()` method, so configurable rules can validate their own
+serializable fields without changing environment or trainer code.
 
 The first version uses vectorized geometry and preallocated state arrays, with
 small per-world conflict-resolution loops where agent dependencies require
