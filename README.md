@@ -9,18 +9,18 @@ Fast, reproducible 2D robotics environments for
 pip install deep-learning-robotics
 ```
 
-Version `0.0.3` requires `deep-learning-core>=0.0.28,<0.1`.
+Version `0.0.4` requires `deep-learning-core>=0.0.28,<0.1`.
 
-## What's New in 0.0.3?
+## What's New in 0.0.4?
 
-- `dl-init --with-robotics` now adds `deep-learning-robotics`, a runnable
-  `configs/robotics.yaml`, and organized `environments`, `rules`, `scenarios`,
-  `callbacks`, and `episode_managers` packages to a normal dl-core experiment
-- `dl-robotics add environment|rule|scenario NAME` creates robotics-specific
-  local components without replacing dl-core's existing generators for models,
-  trainers, callbacks, and episode managers
-- interaction rules can be selected by registered name or YAML mapping while
-  existing programmatic `InteractionRule` instances remain supported
+- registered observation builders make semantic tensors or shape-controlled
+  RGB model/replay inputs a public environment API
+- registered renderers independently control environment frames and episode
+  media with solid actor and hollow goal circles, squares, or triangles
+- resized RGB builders cache static geometry and draw directly at the requested
+  resolution, keeping markers visible without large intermediate images
+- documentation separates model/replay observations from visual artifacts and
+  includes the complete data-flow graph and extension examples
 
 Previous versions are recorded in the [release history](RELEASES.md).
 

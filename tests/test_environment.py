@@ -61,7 +61,7 @@ def _config() -> dict:
 
 
 def test_scalar_environment_exposes_semantic_observations_and_metrics() -> None:
-    assert dl_robotics.__version__ == "0.0.3"
+    assert dl_robotics.__version__ == "0.0.4"
     environment = make_environment({"name": "robotics_mapf", **_config()})
 
     observation, info = environment.reset(seed=3)
