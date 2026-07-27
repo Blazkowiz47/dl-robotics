@@ -15,9 +15,6 @@ class RoboticsInitExtension(InitExtension):
 
     def add_arguments(self, parser: argparse.ArgumentParser) -> None:
         """Register robotics scaffold flags."""
-        self._add_arguments(parser)
-
-    def _add_arguments(self, parser: argparse.ArgumentParser) -> None:
         group = parser.add_mutually_exclusive_group()
         group.add_argument(
             "--with-robotics",
@@ -40,22 +37,12 @@ class RoboticsInitExtension(InitExtension):
         discovered_extensions: dict[str, InitExtension],
     ) -> bool:
         """Enable robotics scaffolding when explicitly requested."""
-        return self._is_enabled(args, discovered_extensions)
-
-    def _is_enabled(
-        self,
-        args: argparse.Namespace,
-        discovered_extensions: dict[str, InitExtension],
-    ) -> bool:
         del discovered_extensions
         return self.selection_state(args) is True
 
     def apply(self, context: ScaffoldContext) -> None:
         """Add robotics project files to the generated scaffold."""
-        self._apply(context)
-
-    def _apply(self, context: ScaffoldContext) -> None:
-        context.add_dependency("deep-learning-robotics>=0.0.4,<0.1")
+        context.add_dependency("deep-learning-robotics>=0.0.5,<0.1")
         context.append_bootstrap_import("import dl_robotics  # noqa: F401")
         context.append_bootstrap_import("import rules  # noqa: F401")
         context.append_bootstrap_import("import scenarios  # noqa: F401")

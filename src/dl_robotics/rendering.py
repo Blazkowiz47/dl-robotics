@@ -20,7 +20,7 @@ UInt8Image = NDArray[np.uint8]
 class GridRenderer:
     """Render semantic observations or live worlds without a display server."""
 
-    _PALETTE = np.asarray(
+    DEFAULT_PALETTE = np.asarray(
         [
             [37, 99, 235],
             [220, 38, 38],
@@ -42,6 +42,7 @@ class GridRenderer:
         actor_shape: str = "circle",
         goal_shape: str = "square",
         show_actor_ids: bool = True,
+        palette: list[tuple[int, int, int]] | None = None,
     ):
         if isinstance(cell_size, bool) or not isinstance(cell_size, int):
             raise TypeError("cell_size must be an integer")
@@ -65,6 +66,21 @@ class GridRenderer:
         self.actor_shape = actor_shape
         self.goal_shape = goal_shape
         self.show_actor_ids = show_actor_ids
+        palette_values = np.asarray(
+            self.DEFAULT_PALETTE if palette is None else palette
+        )
+        if (
+            palette_values.ndim != 2
+            or palette_values.shape[1] != 3
+            or palette_values.shape[0] == 0
+            or not np.issubdtype(palette_values.dtype, np.integer)
+            or np.any(palette_values < 0)
+            or np.any(palette_values > 255)
+        ):
+            raise ValueError(
+                "palette must contain one or more integer RGB triples in [0, 255]"
+            )
+        self.palette = palette_values.astype(np.uint8)
         self._resized_backgrounds: dict[tuple[str, int], UInt8Image] = {}
 
     @classmethod
@@ -81,32 +97,40 @@ class GridRenderer:
         color: tuple[int, int, int],
     ) -> None:
         """Draw one hollow goal marker."""
-        self._draw_goal(
-            frame,
-            row=row,
-            column=column,
-            color=color,
-        )
-
-    def _draw_goal(
-        self,
-        frame: UInt8Image,
-        *,
-        row: int,
-        column: int,
-        color: tuple[int, int, int],
-    ) -> None:
         inset = max(3, self.cell_size // 7)
         x0 = column * self.cell_size + inset
         y0 = row * self.cell_size + inset
         x1 = (column + 1) * self.cell_size - inset - 1
         y1 = (row + 1) * self.cell_size - inset - 1
-        thickness = max(2, self.cell_size // 24)
+        center = (
+            (x0 + x1) // 2,
+            (y0 + y1) // 2,
+        )
+        self.draw_goal_marker(
+            frame,
+            center=center,
+            radius=max(3, (x1 - x0) // 2),
+            color=color,
+        )
+
+    def draw_goal_marker(
+        self,
+        frame: UInt8Image,
+        *,
+        center: tuple[int, int],
+        radius: int,
+        color: tuple[int, int, int],
+    ) -> None:
+        """Draw a hollow goal at pixel coordinates.
+
+        Override this hook to customize goals in normal and resized rendering.
+        """
+        thickness = max(2, radius // 6)
         if self.goal_shape == "circle":
             cv2.circle(
                 frame,
-                ((x0 + x1) // 2, (y0 + y1) // 2),
-                max(3, (x1 - x0) // 2),
+                center,
+                radius,
                 color,
                 thickness,
                 lineType=cv2.LINE_AA,
@@ -114,9 +138,9 @@ class GridRenderer:
         elif self.goal_shape == "triangle":
             points = np.asarray(
                 [
-                    [(x0 + x1) // 2, y0],
-                    [x1, y1],
-                    [x0, y1],
+                    [center[0], center[1] - radius],
+                    [center[0] + radius, center[1] + radius],
+                    [center[0] - radius, center[1] + radius],
                 ],
                 dtype=np.int32,
             )
@@ -129,7 +153,13 @@ class GridRenderer:
                 lineType=cv2.LINE_AA,
             )
         else:
-            cv2.rectangle(frame, (x0, y0), (x1, y1), color, thickness)
+            cv2.rectangle(
+                frame,
+                (center[0] - radius, center[1] - radius),
+                (center[0] + radius, center[1] + radius),
+                color,
+                thickness,
+            )
 
     def draw_actor(
         self,
@@ -141,28 +171,30 @@ class GridRenderer:
         identity: int,
     ) -> None:
         """Draw one solid actor marker."""
-        self._draw_actor(
+        self.draw_actor_marker(
             frame,
-            row=row,
-            column=column,
+            center=(
+                column * self.cell_size + self.cell_size // 2,
+                row * self.cell_size + self.cell_size // 2,
+            ),
+            radius=max(3, self.cell_size // 3),
             color=color,
             identity=identity,
         )
 
-    def _draw_actor(
+    def draw_actor_marker(
         self,
         frame: UInt8Image,
         *,
-        row: int,
-        column: int,
+        center: tuple[int, int],
+        radius: int,
         color: tuple[int, int, int],
         identity: int,
     ) -> None:
-        center = (
-            column * self.cell_size + self.cell_size // 2,
-            row * self.cell_size + self.cell_size // 2,
-        )
-        radius = max(3, self.cell_size // 3)
+        """Draw a solid actor at pixel coordinates.
+
+        Override this hook to customize actors in normal and resized rendering.
+        """
         if self.actor_shape == "square":
             cv2.rectangle(
                 frame,
@@ -195,26 +227,29 @@ class GridRenderer:
                 -1,
                 lineType=cv2.LINE_AA,
             )
-        if self.show_actor_ids:
+        if self.show_actor_ids and radius >= 6:
             cv2.putText(
                 frame,
                 str(identity),
                 (
-                    center[0] - self.cell_size // 9,
-                    center[1] + self.cell_size // 9,
+                    center[0] - radius // 2,
+                    center[1] + radius // 2,
                 ),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                max(0.3, self.cell_size / 90.0),
+                max(0.3, radius / 20.0),
                 (255, 255, 255),
-                max(1, self.cell_size // 24),
+                max(1, radius // 6),
                 cv2.LINE_AA,
             )
 
+    def actor_color(self, identity: int) -> tuple[int, int, int]:
+        """Return the RGB color used for an actor and its goal."""
+        return tuple(
+            int(value) for value in self.palette[identity % len(self.palette)]
+        )
+
     def render_observation(self, observation: Any) -> UInt8Image:
         """Render one `[channels, height, width]` semantic observation."""
-        return self._render_observation(observation)
-
-    def _render_observation(self, observation: Any) -> UInt8Image:
         values = np.asarray(observation)
         if (
             values.ndim == 3
@@ -258,7 +293,7 @@ class GridRenderer:
         }
         for row, column in np.argwhere(values[2] > 0.0):
             identity = identity_lookup[float(values[2, row, column])]
-            color = tuple(int(value) for value in self._PALETTE[identity % 8])
+            color = self.actor_color(identity)
             self.draw_goal(
                 frame,
                 row=int(row),
@@ -268,7 +303,7 @@ class GridRenderer:
 
         for row, column in np.argwhere(values[1] > 0.0):
             identity = identity_lookup[float(values[1, row, column])]
-            color = tuple(int(value) for value in self._PALETTE[identity % 8])
+            color = self.actor_color(identity)
             self.draw_actor(
                 frame,
                 row=int(row),
@@ -288,13 +323,6 @@ class GridRenderer:
 
     def render_world(self, world: GridWorldBatch, world_index: int = 0) -> UInt8Image:
         """Render one live world using its actor and goal state."""
-        return self._render_world(world, world_index)
-
-    def _render_world(
-        self,
-        world: GridWorldBatch,
-        world_index: int = 0,
-    ) -> UInt8Image:
         if isinstance(world_index, bool) or not isinstance(world_index, int):
             raise TypeError("world_index must be an integer")
         if not 0 <= world_index < world.num_worlds:
@@ -310,7 +338,7 @@ class GridRenderer:
             observation[1, row, column] = (actor_index + 1) / scale
             goal_row, goal_column = world.goal_positions[actor_index]
             observation[2, goal_row, goal_column] = (actor_index + 1) / scale
-        return self._render_observation(observation)
+        return self.render_observation(observation)
 
     def render_world_at_size(
         self,
@@ -319,14 +347,6 @@ class GridRenderer:
         world_index: int = 0,
     ) -> UInt8Image:
         """Render directly at a square output size without a large intermediate."""
-        return self._render_world_at_size(world, output_size, world_index)
-
-    def _render_world_at_size(
-        self,
-        world: GridWorldBatch,
-        output_size: int,
-        world_index: int = 0,
-    ) -> UInt8Image:
         if isinstance(output_size, bool) or not isinstance(output_size, int):
             raise TypeError("output_size must be an integer")
         if output_size <= 0:
@@ -379,66 +399,24 @@ class GridRenderer:
                         (205, 211, 220),
                         1,
                     )
-            row_scale = (output_size - 1) / max(
-                world.scenario.height - 1,
-                1,
-            )
-            column_scale = (output_size - 1) / max(
-                world.scenario.width - 1,
-                1,
-            )
-            radius = max(2, output_size // 128)
-            thickness = max(1, radius // 2)
-            for actor_index, (goal_row, goal_column) in enumerate(
-                world.goal_positions
-            ):
-                center = (
-                    round(int(goal_column) * column_scale),
-                    round(int(goal_row) * row_scale),
-                )
-                color = tuple(
-                    int(value) for value in self._PALETTE[actor_index % 8]
-                )
-                if self.goal_shape == "square":
-                    cv2.rectangle(
-                        background,
-                        (center[0] - radius, center[1] - radius),
-                        (center[0] + radius, center[1] + radius),
-                        color,
-                        thickness,
-                    )
-                elif self.goal_shape == "triangle":
-                    points = np.asarray(
-                        [
-                            [center[0], center[1] - radius],
-                            [center[0] + radius, center[1] + radius],
-                            [center[0] - radius, center[1] + radius],
-                        ],
-                        dtype=np.int32,
-                    )
-                    cv2.polylines(
-                        background,
-                        [points],
-                        True,
-                        color,
-                        thickness,
-                        lineType=cv2.LINE_AA,
-                    )
-                else:
-                    cv2.circle(
-                        background,
-                        center,
-                        radius,
-                        color,
-                        thickness,
-                        lineType=cv2.LINE_AA,
-                    )
             self._resized_backgrounds[cache_key] = background
 
         frame = background.copy()
         row_scale = (output_size - 1) / max(world.scenario.height - 1, 1)
         column_scale = (output_size - 1) / max(world.scenario.width - 1, 1)
         radius = max(2, output_size // 128)
+        for actor_index, (goal_row, goal_column) in enumerate(
+            world.goal_positions
+        ):
+            self.draw_goal_marker(
+                frame,
+                center=(
+                    round(int(goal_column) * column_scale),
+                    round(int(goal_row) * row_scale),
+                ),
+                radius=radius,
+                color=self.actor_color(actor_index),
+            )
         for actor_index, (actor_row, actor_column) in enumerate(
             world.positions[world_index]
         ):
@@ -446,52 +424,13 @@ class GridRenderer:
                 round(int(actor_column) * column_scale),
                 round(int(actor_row) * row_scale),
             )
-            color = tuple(
-                int(value) for value in self._PALETTE[actor_index % 8]
+            self.draw_actor_marker(
+                frame,
+                center=center,
+                radius=radius,
+                color=self.actor_color(actor_index),
+                identity=actor_index,
             )
-            if self.actor_shape == "square":
-                cv2.rectangle(
-                    frame,
-                    (center[0] - radius, center[1] - radius),
-                    (center[0] + radius, center[1] + radius),
-                    color,
-                    -1,
-                )
-            elif self.actor_shape == "triangle":
-                points = np.asarray(
-                    [
-                        [center[0], center[1] - radius],
-                        [center[0] + radius, center[1] + radius],
-                        [center[0] - radius, center[1] + radius],
-                    ],
-                    dtype=np.int32,
-                )
-                cv2.fillPoly(
-                    frame,
-                    [points],
-                    color,
-                    lineType=cv2.LINE_AA,
-                )
-            else:
-                cv2.circle(
-                    frame,
-                    center,
-                    radius,
-                    color,
-                    -1,
-                    lineType=cv2.LINE_AA,
-                )
-            if self.show_actor_ids and radius >= 6:
-                cv2.putText(
-                    frame,
-                    str(actor_index),
-                    (center[0] - radius // 2, center[1] + radius // 2),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    max(0.3, radius / 20.0),
-                    (255, 255, 255),
-                    max(1, radius // 6),
-                    cv2.LINE_AA,
-                )
         return frame
 
 

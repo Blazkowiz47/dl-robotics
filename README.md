@@ -9,18 +9,18 @@ Fast, reproducible 2D robotics environments for
 pip install deep-learning-robotics
 ```
 
-Version `0.0.4` requires `deep-learning-core>=0.0.28,<0.1`.
+Version `0.0.5` requires `deep-learning-core>=0.0.34,<0.1`.
 
-## What's New in 0.0.4?
+## What's New in 0.0.5?
 
-- registered observation builders make semantic tensors or shape-controlled
-  RGB model/replay inputs a public environment API
-- registered renderers independently control environment frames and episode
-  media with solid actor and hollow goal circles, squares, or triangles
-- resized RGB builders cache static geometry and draw directly at the requested
-  resolution, keeping markers visible without large intermediate images
-- documentation separates model/replay observations from visual artifacts and
-  includes the complete data-flow graph and extension examples
+- all researcher override points now have public names, including observation
+  `build()`, environment `build_info()`, and renderer marker hooks
+- custom actor and goal markers affect normal media and optimized resized model
+  observations consistently
+- renderers accept configurable palettes and expose `actor_color()` for dynamic
+  research encodings
+- redundant one-use public/private method pairs were removed from environments,
+  world physics, scenarios, and scaffold integration
 
 Previous versions are recorded in the [release history](RELEASES.md).
 
@@ -153,7 +153,7 @@ from dl_robotics import GridObservationBuilder, register_observation_builder
 
 @register_observation_builder("actor_goal_masks")
 class ActorGoalMasks(GridObservationBuilder):
-    def _observation_space(self, scenario):
+    def observation_space(self, scenario):
         return gym.spaces.Box(
             low=0.0,
             high=1.0,
@@ -161,7 +161,7 @@ class ActorGoalMasks(GridObservationBuilder):
             dtype=np.float32,
         )
 
-    def _build(self, world):
+    def build(self, world):
         observations = np.zeros(
             (
                 world.num_worlds,
@@ -188,8 +188,8 @@ environment:
     name: actor_goal_masks
 ```
 
-Custom builders inherit `GridObservationBuilder` and implement only
-`_observation_space()` and `_build()`. The built-in MAPF environments currently
+Custom builders inherit `GridObservationBuilder` and implement the public
+`observation_space()` and `build()` hooks. The built-in MAPF environments currently
 expect batched NumPy arrays. RGB builders can therefore return
 `[num_envs, height, width, 3]`, while semantic builders can choose their own
 channel layout. The returned values, declared Gymnasium space, model, and
@@ -206,6 +206,7 @@ environment:
     actor_shape: triangle
     goal_shape: circle
     show_actor_ids: false
+    palette: [[255, 0, 0], [0, 120, 255]]
 ```
 
 When `output_size` is set, walls and fixed goals are rasterized and cached
@@ -237,16 +238,22 @@ environment:
     show_grid: true
     actor_shape: triangle
     goal_shape: circle
+    palette: [[255, 0, 0], [0, 120, 255]]
     show_actor_ids: false
 ```
 
 Actors are solid and goals are hollow. Both support `circle`, `square`, and
-`triangle`. For research-specific symbols, subclass `GridRenderer`, override
-`_draw_actor()` or `_draw_goal()`, register it with
-`@register_grid_renderer("my_renderer")`, and select that name under `render`.
-Override `_render_observation()` only when the full RGB composition needs to
-change. Episode artifacts have their own component configuration because they
-render stored historical observations:
+`triangle`. The optional `palette` controls identity colors. For
+research-specific symbols, subclass `GridRenderer` and override the public
+`draw_actor_marker()` or `draw_goal_marker()` hooks. Normal media and optimized
+resized model observations both call these hooks. Override `actor_color()` to
+compute colors dynamically. For complete-frame composition, override
+`render_observation()` for semantic observations and episode media, and
+`render_world_at_size()` for optimized fixed-size model observations. Register
+the renderer with
+`@register_grid_renderer("my_renderer")` and select that name under `render`.
+Episode artifacts have their own component configuration because they render
+stored historical observations:
 
 ```yaml
 episode_managers:
@@ -254,6 +261,7 @@ episode_managers:
     renderer_name: my_renderer
     actor_shape: triangle
     goal_shape: circle
+    palette: [[255, 0, 0], [0, 120, 255]]
 ```
 
 The `robotics` episode manager includes dl-core's standard episode metrics and

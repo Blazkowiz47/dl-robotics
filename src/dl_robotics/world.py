@@ -40,10 +40,6 @@ class InteractionRule(ABC):
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> InteractionRule:
         """Create a rule from serializable configuration."""
-        return cls._from_config(config)
-
-    @classmethod
-    def _from_config(cls, config: dict[str, Any]) -> InteractionRule:
         if config:
             fields = ", ".join(sorted(config))
             raise ValueError(
@@ -73,20 +69,6 @@ class ExclusiveCellRule(InteractionRule):
         blocked: BoolArray,
     ) -> tuple[IntArray, IntArray]:
         """Apply exclusive-cell collision rules."""
-        return self._resolve(
-            scenario,
-            positions,
-            desired_positions,
-            blocked,
-        )
-
-    def _resolve(
-        self,
-        scenario: GridScenario,
-        positions: IntArray,
-        desired_positions: IntArray,
-        blocked: BoolArray,
-    ) -> tuple[IntArray, IntArray]:
         del scenario
         resolved = desired_positions.copy()
         actor_collisions = np.zeros(positions.shape[0], dtype=np.int32)
@@ -222,9 +204,6 @@ class GridWorldBatch:
 
     def reset(self, mask: BoolArray | None = None) -> None:
         """Reset selected worlds to their scenario starts."""
-        self._reset(mask)
-
-    def _reset(self, mask: BoolArray | None = None) -> None:
         if mask is None:
             reset_mask = np.ones(self.num_worlds, dtype=np.bool_)
         else:
@@ -250,9 +229,6 @@ class GridWorldBatch:
 
     def step(self, actions: IntArray) -> StepEvents:
         """Advance every world using simultaneous per-actor actions."""
-        return self._step(actions)
-
-    def _step(self, actions: IntArray) -> StepEvents:
         action_array = np.asarray(actions)
         expected_shape = (self.num_worlds, self.scenario.num_agents)
         if action_array.shape != expected_shape:

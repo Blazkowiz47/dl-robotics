@@ -22,28 +22,23 @@ class _GridMAPFMixin:
 
     def build_observations(self) -> Any:
         """Build the model and replay observation for every world."""
-        return self._build_observations()
-
-    def _build_observations(self) -> Any:
         return self.observation_builder.build(self.world)
 
     def build_observation(self, world_index: int = 0) -> Any:
         """Build the model and replay observation for one world."""
-        return self._build_observation(world_index)
-
-    def _build_observation(self, world_index: int = 0) -> Any:
         if isinstance(world_index, bool) or not isinstance(world_index, int):
             raise TypeError("world_index must be an integer")
         if not 0 <= world_index < self.world.num_worlds:
             raise IndexError("world_index is out of range")
         return self.build_observations()[world_index]
 
-    def _info(
+    def build_info(
         self,
         world_index: int,
         events: StepEvents | None,
         success: bool,
     ) -> dict[str, Any]:
+        """Build one lane's public episode metadata."""
         return {
             "scenario": self.scenario.name,
             "scenario_fingerprint": self.scenario_fingerprint,
@@ -156,31 +151,17 @@ class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
         options: dict[str, Any] | None = None,
     ) -> tuple[np.ndarray, dict[str, Any]]:
         """Reset the MAPF world."""
-        return self._reset(seed=seed, options=options)
-
-    def _reset(
-        self,
-        *,
-        seed: int | None = None,
-        options: dict[str, Any] | None = None,
-    ) -> tuple[np.ndarray, dict[str, Any]]:
         gym.Env.reset(self, seed=seed)
         del options
         self.world.reset()
         success = bool(self.world.reached[0].all())
-        return self.build_observation(), self._info(0, None, success)
+        return self.build_observation(), self.build_info(0, None, success)
 
     def step(
         self,
         action: int,
     ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         """Advance all actors simultaneously."""
-        return self._step(action)
-
-    def _step(
-        self,
-        action: int,
-    ) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         joint_actions = np.asarray([action])
         if joint_actions.shape != (1,):
             raise ValueError("Joint actions must have shape (1,)")
@@ -219,7 +200,7 @@ class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
             ~terminated,
         )
         observations = self.build_observations()
-        info = self._info(0, events, bool(terminated[0]))
+        info = self.build_info(0, events, bool(terminated[0]))
         return (
             observations[0],
             float(rewards[0]),
@@ -230,17 +211,10 @@ class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
 
     def render(self) -> np.ndarray:
         """Return the current world as an RGB frame."""
-        return self._render()
-
-    def _render(self) -> np.ndarray:
         return self.renderer.render_world(self.world)
 
     def close(self) -> None:
         """Release environment resources."""
-        self._close()
-
-    def _close(self) -> None:
-        return None
 
 
 @register_environment("robotics_mapf_vector")
@@ -320,14 +294,6 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
         options: dict[str, Any] | None = None,
     ) -> tuple[np.ndarray, dict[str, Any]]:
         """Reset all or selected vector lanes."""
-        return self._reset(seed=seed, options=options)
-
-    def _reset(
-        self,
-        *,
-        seed: int | list[int | None] | None = None,
-        options: dict[str, Any] | None = None,
-    ) -> tuple[np.ndarray, dict[str, Any]]:
         if isinstance(seed, list):
             if len(seed) != self.num_envs:
                 raise ValueError("seed list must have one value per environment")
@@ -351,7 +317,7 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
                 raise ValueError("reset_mask must have shape [num_envs]")
         self.world.reset(reset_mask)
         infos = [
-            self._info(
+            self.build_info(
                 index,
                 None,
                 bool(self.world.reached[index].all()),
@@ -371,18 +337,6 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
         dict[str, Any],
     ]:
         """Advance every MAPF environment and same-step autoreset completed lanes."""
-        return self._step(actions)
-
-    def _step(
-        self,
-        actions: np.ndarray,
-    ) -> tuple[
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        dict[str, Any],
-    ]:
         joint_actions = np.asarray(actions)
         if joint_actions.shape != (self.num_envs,):
             raise ValueError(
@@ -424,7 +378,7 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
         )
         observations = self.build_observations()
         infos = [
-            self._info(index, events, bool(terminated[index]))
+            self.build_info(index, events, bool(terminated[index]))
             for index in range(self.num_envs)
         ]
         done = np.logical_or(terminated, truncated)
@@ -434,7 +388,7 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
             self.world.reset(done)
             observations = self.build_observations()
             for index in np.flatnonzero(done):
-                infos[int(index)] = self._info(
+                infos[int(index)] = self.build_info(
                     int(index),
                     None,
                     bool(self.world.reached[int(index)].all()),
@@ -459,9 +413,6 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
 
     def render(self) -> np.ndarray:
         """Return every vector lane as an RGB frame batch."""
-        return self._render()
-
-    def _render(self) -> np.ndarray:
         return np.stack(
             [
                 self.renderer.render_world(self.world, world_index)
@@ -471,7 +422,3 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
 
     def close(self) -> None:
         """Release environment resources."""
-        self._close()
-
-    def _close(self) -> None:
-        return None

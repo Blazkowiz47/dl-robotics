@@ -79,6 +79,52 @@ def test_renderer_supports_solid_triangles_and_hollow_circles() -> None:
     assert frame[12, 43].tolist() == [37, 99, 235]
 
 
+def test_public_marker_hooks_control_normal_and_resized_model_rendering() -> None:
+    class ResearchRenderer(GridRenderer):
+        def draw_goal_marker(self, frame, *, center, radius, color) -> None:
+            del radius, color
+            frame[center[1], center[0]] = (11, 22, 33)
+
+        def draw_actor_marker(
+            self,
+            frame,
+            *,
+            center,
+            radius,
+            color,
+            identity,
+        ) -> None:
+            del radius, color, identity
+            frame[center[1], center[0]] = (44, 55, 66)
+
+    environment = _environment()
+    environment.reset()
+    renderer = ResearchRenderer(cell_size=16, show_grid=False)
+
+    normal = renderer.render_world(environment.world)
+    resized = renderer.render_world_at_size(environment.world, 32)
+
+    assert np.any(np.all(normal == (11, 22, 33), axis=2))
+    assert np.any(np.all(normal == (44, 55, 66), axis=2))
+    assert np.any(np.all(resized == (11, 22, 33), axis=2))
+    assert np.any(np.all(resized == (44, 55, 66), axis=2))
+
+
+def test_renderer_accepts_research_palette() -> None:
+    renderer = GridRenderer(
+        cell_size=16,
+        show_grid=False,
+        palette=[(9, 8, 7)],
+    )
+    observation = np.zeros((3, 1, 2), dtype=np.float32)
+    observation[1, 0, 0] = 1.0
+    observation[2, 0, 1] = 1.0
+
+    frame = renderer.render_observation(observation)
+
+    assert frame[8, 8].tolist() == [9, 8, 7]
+
+
 def test_renderer_passes_rgb_model_observations_through() -> None:
     observation = np.arange(12, dtype=np.uint8).reshape(2, 2, 3)
 

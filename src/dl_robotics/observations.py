@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Any
 
@@ -14,7 +15,7 @@ from .scenario import GridScenario
 from .world import GridWorldBatch
 
 
-class GridObservationBuilder:
+class GridObservationBuilder(ABC):
     """Build model observations from batched grid-world state."""
 
     @classmethod
@@ -22,25 +23,23 @@ class GridObservationBuilder:
         """Create a builder from its YAML-compatible configuration."""
         return cls(**dict(config))
 
+    @abstractmethod
     def observation_space(self, scenario: GridScenario) -> gym.Space[Any]:
         """Return the Gymnasium space produced for one world."""
-        return self._observation_space(scenario)
 
-    def _observation_space(self, scenario: GridScenario) -> gym.Space[Any]:
-        raise NotImplementedError
-
+    @abstractmethod
     def build(self, world: GridWorldBatch) -> Any:
         """Build one model observation per world."""
-        return self._build(world)
-
-    def _build(self, world: GridWorldBatch) -> Any:
-        raise NotImplementedError
 
 
 class SemanticGridObservationBuilder(GridObservationBuilder):
     """Build the default seven-channel MAPF state tensor."""
 
-    def _observation_space(self, scenario: GridScenario) -> gym.Space[np.ndarray]:
+    def observation_space(
+        self,
+        scenario: GridScenario,
+    ) -> gym.Space[np.ndarray]:
+        """Return the seven-channel semantic observation space."""
         return gym.spaces.Box(
             low=-1.0,
             high=1.0,
@@ -48,7 +47,8 @@ class SemanticGridObservationBuilder(GridObservationBuilder):
             dtype=np.float32,
         )
 
-    def _build(self, world: GridWorldBatch) -> np.ndarray:
+    def build(self, world: GridWorldBatch) -> np.ndarray:
+        """Build the seven-channel semantic observation batch."""
         observations = np.zeros(
             (
                 world.num_worlds,
@@ -95,6 +95,7 @@ class RenderedGridObservationBuilder(GridObservationBuilder):
         actor_shape: str = "circle",
         goal_shape: str = "square",
         show_actor_ids: bool = True,
+        palette: list[tuple[int, int, int]] | None = None,
     ) -> None:
         if output_size is not None and (
             isinstance(output_size, bool)
@@ -110,9 +111,14 @@ class RenderedGridObservationBuilder(GridObservationBuilder):
             actor_shape=actor_shape,
             goal_shape=goal_shape,
             show_actor_ids=show_actor_ids,
+            palette=palette,
         )
 
-    def _observation_space(self, scenario: GridScenario) -> gym.Space[np.ndarray]:
+    def observation_space(
+        self,
+        scenario: GridScenario,
+    ) -> gym.Space[np.ndarray]:
+        """Return the rendered RGB observation space."""
         height = (
             self.output_size
             if self.output_size is not None
@@ -130,7 +136,8 @@ class RenderedGridObservationBuilder(GridObservationBuilder):
             dtype=np.uint8,
         )
 
-    def _build(self, world: GridWorldBatch) -> np.ndarray:
+    def build(self, world: GridWorldBatch) -> np.ndarray:
+        """Build a rendered RGB observation batch."""
         frames = []
         for world_index in range(world.num_worlds):
             if self.output_size is None:

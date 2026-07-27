@@ -64,6 +64,12 @@ class RoboticsEpisodeManager(StandardEpisodeManager):
             "Draw actor identity labels in rendered media.",
             default=True,
         ),
+        config_field(
+            "palette",
+            "list[list[int]] | None",
+            "Optional RGB identity colors for actors and goals.",
+            default=None,
+        ),
     ]
 
     def __init__(
@@ -92,6 +98,7 @@ class RoboticsEpisodeManager(StandardEpisodeManager):
                 "actor_shape": self.config.get("actor_shape", "circle"),
                 "goal_shape": self.config.get("goal_shape", "square"),
                 "show_actor_ids": self.config.get("show_actor_ids", True),
+                "palette": self.config.get("palette"),
             }
         )
 
@@ -128,14 +135,14 @@ class RoboticsEpisodeManager(StandardEpisodeManager):
             )
         return metrics
 
-    def _end_episode(
+    def end_episode(
         self,
         environment_index: int,
         result: EpisodeResult,
         *,
         phase: str | None = None,
     ) -> EpisodeRecord:
-        record = super()._end_episode(
+        record = super().end_episode(
             environment_index,
             result,
             phase=phase,

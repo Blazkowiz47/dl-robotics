@@ -44,7 +44,7 @@ def test_robotics_init_extension_updates_scaffold(tmp_path: Path) -> None:
     RoboticsInitExtension().apply(context)
 
     assert (
-        '"deep-learning-robotics>=0.0.4,<0.1"'
+        '"deep-learning-robotics>=0.0.5,<0.1"'
         in context.get_file("pyproject.toml")
     )
     bootstrap = context.get_file(Path("src") / "bootstrap.py")

@@ -13,7 +13,7 @@ import dl_robotics
 class ActorGoalObservationBuilder(dl_robotics.GridObservationBuilder):
     """Minimal test builder proving model observations are replaceable."""
 
-    def _observation_space(self, scenario):
+    def observation_space(self, scenario):
         return gym.spaces.Box(
             low=0.0,
             high=1.0,
@@ -21,7 +21,7 @@ class ActorGoalObservationBuilder(dl_robotics.GridObservationBuilder):
             dtype=np.float32,
         )
 
-    def _build(self, world):
+    def build(self, world):
         observations = np.zeros(
             (
                 world.num_worlds,
@@ -61,7 +61,7 @@ def _config() -> dict:
 
 
 def test_scalar_environment_exposes_semantic_observations_and_metrics() -> None:
-    assert dl_robotics.__version__ == "0.0.4"
+    assert dl_robotics.__version__ == "0.0.5"
     environment = make_environment({"name": "robotics_mapf", **_config()})
 
     observation, info = environment.reset(seed=3)
@@ -90,6 +90,22 @@ def test_environment_uses_registered_observation_builder_for_model_input() -> No
     assert environment.observation_space.contains(observation)
     assert np.array_equal(observation, environment.build_observation())
     environment.close()
+
+
+def test_public_build_info_hook_controls_research_metadata() -> None:
+    class ResearchEnvironment(dl_robotics.GridMAPFEnvironment):
+        def build_info(self, world_index, events, success):
+            info = super().build_info(world_index, events, success)
+            info["research_signal"] = 7
+            return info
+
+    environment = ResearchEnvironment(_config())
+
+    _, reset_info = environment.reset()
+    _, _, _, _, step_info = environment.step(0)
+
+    assert reset_info["research_signal"] == 7
+    assert step_info["research_signal"] == 7
 
 
 def test_rendered_observation_builder_controls_model_pixels() -> None:

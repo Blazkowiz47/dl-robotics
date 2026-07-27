@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "deep-learning-robotics"
-version = "0.0.4"
+version = "0.0.5"
 description = "Fast 2D robotics and MAPF environments for deep-learning-core."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,7 +30,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "deep-learning-core>=0.0.28,<0.1",
+    "deep-learning-core>=0.0.34,<0.1",
     "gymnasium>=1.3,<2",
     "imageio>=2.34",
     "imageio-ffmpeg>=0.5",

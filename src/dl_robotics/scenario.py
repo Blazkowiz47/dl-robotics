@@ -114,10 +114,6 @@ class GridScenario:
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> GridScenario:
         """Build a scenario from a serializable configuration mapping."""
-        return cls._from_config(config)
-
-    @classmethod
-    def _from_config(cls, config: dict[str, Any]) -> GridScenario:
         if not isinstance(config, dict):
             raise TypeError("scenario must be a mapping")
         starts = config.get("starts")

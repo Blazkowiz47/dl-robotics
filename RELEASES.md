@@ -3,6 +3,17 @@
 The main README shows only the latest release. This page preserves all
 published release notes.
 
+## 0.0.4
+
+- registered observation builders make semantic tensors or shape-controlled
+  RGB model/replay inputs a public environment API
+- registered renderers independently control environment frames and episode
+  media with solid actor and hollow goal circles, squares, or triangles
+- resized RGB builders cache static geometry and draw directly at the requested
+  resolution, keeping markers visible without large intermediate images
+- documentation separates model/replay observations from visual artifacts and
+  includes the complete data-flow graph and extension examples
+
 ## 0.0.3
 
 - `dl-init --with-robotics` now adds `deep-learning-robotics`, a runnable
