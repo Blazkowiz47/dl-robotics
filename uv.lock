@@ -356,7 +356,7 @@ nvtx = [
 
 [[package]]
 name = "deep-learning-core"
-version = "0.0.28"
+version = "0.0.32"
 source = { editable = "../dl-core" }
 dependencies = [
     { name = "albumentations" },

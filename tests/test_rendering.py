@@ -60,6 +60,34 @@ def test_renderer_keeps_actor_and_goal_identity_colors_aligned() -> None:
     assert frame[8, 20].tolist() == [220, 38, 38]
 
 
+def test_renderer_supports_solid_triangles_and_hollow_circles() -> None:
+    observation = np.zeros((3, 1, 2), dtype=np.float32)
+    observation[1, 0, 0] = 1.0
+    observation[2, 0, 1] = 1.0
+    renderer = GridRenderer(
+        cell_size=24,
+        show_grid=False,
+        actor_shape="triangle",
+        goal_shape="circle",
+        show_actor_ids=False,
+    )
+
+    frame = renderer.render_observation(observation)
+
+    assert frame[12, 12].tolist() == [37, 99, 235]
+    assert frame[12, 36].tolist() == [248, 248, 248]
+    assert frame[12, 43].tolist() == [37, 99, 235]
+
+
+def test_renderer_passes_rgb_model_observations_through() -> None:
+    observation = np.arange(12, dtype=np.uint8).reshape(2, 2, 3)
+
+    frame = GridRenderer().render_observation(observation)
+
+    assert np.array_equal(frame, observation)
+    assert frame is not observation
+
+
 def test_write_animation_creates_gif_and_mp4(tmp_path: Path) -> None:
     frames = np.stack(
         [

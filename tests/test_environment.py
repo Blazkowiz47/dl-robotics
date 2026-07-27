@@ -1,11 +1,42 @@
 """Gymnasium and dl-core integration tests."""
 
+import gymnasium as gym
 import numpy as np
 import pytest
 from dl_core.environments import make_environment
 from gymnasium.vector import AutoresetMode
 
 import dl_robotics
+
+
+@dl_robotics.register_observation_builder("test_actor_goal")
+class ActorGoalObservationBuilder(dl_robotics.GridObservationBuilder):
+    """Minimal test builder proving model observations are replaceable."""
+
+    def _observation_space(self, scenario):
+        return gym.spaces.Box(
+            low=0.0,
+            high=1.0,
+            shape=(2, scenario.height, scenario.width),
+            dtype=np.float32,
+        )
+
+    def _build(self, world):
+        observations = np.zeros(
+            (
+                world.num_worlds,
+                2,
+                world.scenario.height,
+                world.scenario.width,
+            ),
+            dtype=np.float32,
+        )
+        for world_index in range(world.num_worlds):
+            row, column = world.positions[world_index, 0]
+            observations[world_index, 0, row, column] = 1.0
+        goal_row, goal_column = world.goal_positions[0]
+        observations[:, 1, goal_row, goal_column] = 1.0
+        return observations
 
 
 def _config() -> dict:
@@ -45,6 +76,39 @@ def test_scalar_environment_exposes_semantic_observations_and_metrics() -> None:
     assert not truncated
     assert info["scenario"] == "swap"
     assert next_info["path_length"] == 2
+    environment.close()
+
+
+def test_environment_uses_registered_observation_builder_for_model_input() -> None:
+    config = _config()
+    config["observation_builder"] = {"name": "test_actor_goal"}
+    environment = make_environment({"name": "robotics_mapf", **config})
+
+    observation, _ = environment.reset()
+
+    assert observation.shape == (2, 2, 3)
+    assert environment.observation_space.contains(observation)
+    assert np.array_equal(observation, environment.build_observation())
+    environment.close()
+
+
+def test_rendered_observation_builder_controls_model_pixels() -> None:
+    config = _config()
+    config["observation_builder"] = {
+        "name": "rendered_grid",
+        "output_size": 32,
+        "cell_size": 16,
+        "actor_shape": "triangle",
+        "goal_shape": "circle",
+        "show_actor_ids": False,
+    }
+    environment = make_environment({"name": "robotics_mapf", **config})
+
+    observation, _ = environment.reset()
+
+    assert observation.shape == (32, 32, 3)
+    assert observation.dtype == np.uint8
+    assert environment.observation_space.contains(observation)
     environment.close()
 
 

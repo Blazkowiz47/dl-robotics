@@ -10,66 +10,33 @@ from dl_core.core.registry import register_environment
 from gymnasium.vector import AutoresetMode
 from gymnasium.vector.utils import batch_space
 
-from .rendering import GridRenderer
+from .observations import make_observation_builder
+from .rendering import make_grid_renderer
 from .rules import make_interaction_rule
 from .scenario import GridScenario
 from .world import GridWorldBatch, StepEvents
 
 
 class _GridMAPFMixin:
-    """Shared preallocated observation and reward implementation."""
+    """Shared public observation and episode-information implementation."""
 
-    def _observations(self) -> np.ndarray:
-        observations = np.zeros(
-            (
-                self.world.num_worlds,
-                *self.single_observation_space.shape,
-            ),
-            dtype=np.float32,
-        )
-        observations[:, 0] = self.world.wall_mask
-        agent_scale = float(self.scenario.num_agents)
-        world_indices = np.arange(self.world.num_worlds)
-        for actor_index in range(self.scenario.num_agents):
-            rows = self.world.positions[:, actor_index, 0]
-            columns = self.world.positions[:, actor_index, 1]
-            observations[
-                world_indices,
-                1,
-                rows,
-                columns,
-            ] = (actor_index + 1) / agent_scale
-            observations[
-                :,
-                2,
-                self.world.goal_positions[actor_index, 0],
-                self.world.goal_positions[actor_index, 1],
-            ] = (actor_index + 1) / agent_scale
-            observations[
-                world_indices,
-                3,
-                rows,
-                columns,
-            ] = self.world.velocities[:, actor_index, 0]
-            observations[
-                world_indices,
-                4,
-                rows,
-                columns,
-            ] = self.world.velocities[:, actor_index, 1]
-            observations[
-                world_indices,
-                5,
-                rows,
-                columns,
-            ] = self.world.accelerations[:, actor_index, 0] / 2.0
-            observations[
-                world_indices,
-                6,
-                rows,
-                columns,
-            ] = self.world.accelerations[:, actor_index, 1] / 2.0
-        return observations
+    def build_observations(self) -> Any:
+        """Build the model and replay observation for every world."""
+        return self._build_observations()
+
+    def _build_observations(self) -> Any:
+        return self.observation_builder.build(self.world)
+
+    def build_observation(self, world_index: int = 0) -> Any:
+        """Build the model and replay observation for one world."""
+        return self._build_observation(world_index)
+
+    def _build_observation(self, world_index: int = 0) -> Any:
+        if isinstance(world_index, bool) or not isinstance(world_index, int):
+            raise TypeError("world_index must be an integer")
+        if not 0 <= world_index < self.world.num_worlds:
+            raise IndexError("world_index is out of range")
+        return self.build_observations()[world_index]
 
     def _info(
         self,
@@ -165,22 +132,19 @@ class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
                 config.get("interaction_rule")
             ),
         )
+        self.observation_builder = make_observation_builder(
+            config.get("observation_builder")
+        )
 
         render_config = config.get("render", {})
         if not isinstance(render_config, dict):
             raise TypeError("environment.render must be a mapping")
-        self.renderer = GridRenderer(
-            cell_size=render_config.get("cell_size", 48),
-            show_grid=render_config.get("show_grid", True),
-        )
+        self.renderer = make_grid_renderer(render_config)
         self.single_action_space = gym.spaces.Discrete(
             5**self.scenario.num_agents
         )
-        self.single_observation_space = gym.spaces.Box(
-            low=-1.0,
-            high=1.0,
-            shape=(7, self.scenario.height, self.scenario.width),
-            dtype=np.float32,
+        self.single_observation_space = self.observation_builder.observation_space(
+            self.scenario
         )
         self.action_space = self.single_action_space
         self.observation_space = self.single_observation_space
@@ -204,7 +168,7 @@ class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
         del options
         self.world.reset()
         success = bool(self.world.reached[0].all())
-        return self._observations()[0], self._info(0, None, success)
+        return self.build_observation(), self._info(0, None, success)
 
     def step(
         self,
@@ -254,7 +218,7 @@ class GridMAPFEnvironment(_GridMAPFMixin, gym.Env[np.ndarray, int]):
             self.world.steps >= self.scenario.max_steps,
             ~terminated,
         )
-        observations = self._observations()
+        observations = self.build_observations()
         info = self._info(0, events, bool(terminated[0]))
         return (
             observations[0],
@@ -329,22 +293,19 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
                 config.get("interaction_rule")
             ),
         )
+        self.observation_builder = make_observation_builder(
+            config.get("observation_builder")
+        )
 
         render_config = config.get("render", {})
         if not isinstance(render_config, dict):
             raise TypeError("environment.render must be a mapping")
-        self.renderer = GridRenderer(
-            cell_size=render_config.get("cell_size", 48),
-            show_grid=render_config.get("show_grid", True),
-        )
+        self.renderer = make_grid_renderer(render_config)
         self.single_action_space = gym.spaces.Discrete(
             5**self.scenario.num_agents
         )
-        self.single_observation_space = gym.spaces.Box(
-            low=-1.0,
-            high=1.0,
-            shape=(7, self.scenario.height, self.scenario.width),
-            dtype=np.float32,
+        self.single_observation_space = self.observation_builder.observation_space(
+            self.scenario
         )
         self.action_space = batch_space(self.single_action_space, num_envs)
         self.observation_space = batch_space(
@@ -397,7 +358,7 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
             )
             for index in range(self.num_envs)
         ]
-        return self._observations(), self._batch_infos(infos)
+        return self.build_observations(), self._batch_infos(infos)
 
     def step(
         self,
@@ -461,7 +422,7 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
             self.world.steps >= self.scenario.max_steps,
             ~terminated,
         )
-        observations = self._observations()
+        observations = self.build_observations()
         infos = [
             self._info(index, events, bool(terminated[index]))
             for index in range(self.num_envs)
@@ -471,7 +432,7 @@ class GridMAPFVectorEnvironment(_GridMAPFMixin, gym.vector.VectorEnv):
             final_observations = observations.copy()
             final_infos = [dict(info) for info in infos]
             self.world.reset(done)
-            observations = self._observations()
+            observations = self.build_observations()
             for index in np.flatnonzero(done):
                 infos[int(index)] = self._info(
                     int(index),

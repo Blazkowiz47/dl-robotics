@@ -109,6 +109,8 @@ environment:
   render:
     cell_size: 32
     show_grid: true
+    actor_shape: circle
+    goal_shape: square
 
 evaluation_environment:
   name: robotics_mapf
@@ -129,6 +131,8 @@ evaluation_environment:
   render:
     cell_size: 32
     show_grid: true
+    actor_shape: circle
+    goal_shape: square
 
 models:
   q_network:

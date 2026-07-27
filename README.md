@@ -118,11 +118,143 @@ sum of costs, and total path length for episode managers and experiment
 tracking. `collisions` and its typed variants describe the latest step;
 `episode_collisions` and its typed variants retain the episode totals.
 
+## Controlling Model Observations
+
+Model input and visual media are deliberately separate:
+
+```mermaid
+flowchart LR
+    W["GridWorldBatch state"] --> B["GridObservationBuilder.build()"]
+    B --> O["Gymnasium observation"]
+    O --> M["Policy or Q-network"]
+    O --> T["dl-core transition"]
+    T --> R["Replay buffer"]
+    W --> V["GridRenderer.render_world()"]
+    O --> E["GridRenderer.render_observation()"]
+    V --> A["RGB frame / GIF / MP4"]
+    E --> A
+```
+
+`build_observation()` and `build_observations()` on the environment return
+exactly what is sent to the model and, for off-policy trainers, stored as
+`observation` and `next_observation` in replay. The default registered
+`semantic_grid` builder produces the seven channels described above.
+
+Researchers can register a different observation space and construction
+without changing stepping, rewards, or the trainer. Standard semantic and RGB
+layouts also work with the default renderer; unusual layouts need a matching
+registered renderer:
+
+```python
+import gymnasium as gym
+import numpy as np
+from dl_robotics import GridObservationBuilder, register_observation_builder
+
+
+@register_observation_builder("actor_goal_masks")
+class ActorGoalMasks(GridObservationBuilder):
+    def _observation_space(self, scenario):
+        return gym.spaces.Box(
+            low=0.0,
+            high=1.0,
+            shape=(3, scenario.height, scenario.width),
+            dtype=np.float32,
+        )
+
+    def _build(self, world):
+        observations = np.zeros(
+            (
+                world.num_worlds,
+                3,
+                world.scenario.height,
+                world.scenario.width,
+            ),
+            dtype=np.float32,
+        )
+        observations[:, 0] = world.wall_mask
+        for world_index in range(world.num_worlds):
+            row, column = world.positions[world_index, 0]
+            observations[world_index, 1, row, column] = 1.0
+        goal_row, goal_column = world.goal_positions[0]
+        observations[:, 2, goal_row, goal_column] = 1.0
+        return observations
+```
+
+Select it independently for training and evaluation:
+
+```yaml
+environment:
+  observation_builder:
+    name: actor_goal_masks
+```
+
+Custom builders inherit `GridObservationBuilder` and implement only
+`_observation_space()` and `_build()`. The built-in MAPF environments currently
+expect batched NumPy arrays. RGB builders can therefore return
+`[num_envs, height, width, 3]`, while semantic builders can choose their own
+channel layout. The returned values, declared Gymnasium space, model, and
+selected dl-core trainer must agree.
+
+For shape-controlled RGB model input, use the built-in `rendered_grid` builder.
+These pixels—not merely the GIF appearance—are then stored in replay:
+
+```yaml
+environment:
+  observation_builder:
+    name: rendered_grid
+    output_size: 256
+    actor_shape: triangle
+    goal_shape: circle
+    show_actor_ids: false
+```
+
+When `output_size` is set, walls and fixed goals are rasterized and cached
+directly at that resolution. Actors are then drawn at the same resolution with
+a minimum visible marker size. A 1000×1000 world targeting 256×256 therefore
+does not allocate a cell-scaled 16000×16000 intermediate image.
+`output_size` supersedes `cell_size`; grid lines are automatically omitted when
+individual cells would be less than four pixels wide. Actor IDs are omitted
+when their marker is too small to keep the pixels legible.
+
+The default episode renderer understands the default semantic layout and
+passes HWC `uint8` RGB observations through unchanged. A custom semantic layout
+whose first three channels are not walls, actors, and goals should be paired
+with a custom registered renderer.
+
 ## Rendering and Episode Artifacts
 
 `environment.render()` returns RGB `uint8` arrays without opening a display:
 `[height, width, 3]` for the scalar environment and
 `[num_envs, height, width, 3]` for the vector environment.
+
+Rendering configuration changes media only; it does not change model input:
+
+```yaml
+environment:
+  render:
+    name: grid
+    cell_size: 32
+    show_grid: true
+    actor_shape: triangle
+    goal_shape: circle
+    show_actor_ids: false
+```
+
+Actors are solid and goals are hollow. Both support `circle`, `square`, and
+`triangle`. For research-specific symbols, subclass `GridRenderer`, override
+`_draw_actor()` or `_draw_goal()`, register it with
+`@register_grid_renderer("my_renderer")`, and select that name under `render`.
+Override `_render_observation()` only when the full RGB composition needs to
+change. Episode artifacts have their own component configuration because they
+render stored historical observations:
+
+```yaml
+episode_managers:
+  robotics:
+    renderer_name: my_renderer
+    actor_shape: triangle
+    goal_shape: circle
+```
 
 The `robotics` episode manager includes dl-core's standard episode metrics and
 trajectory capture, so it should be used in place of the `standard` manager.

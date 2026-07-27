@@ -14,7 +14,7 @@ from dl_core.core import (
 from dl_core.episode_managers import StandardEpisodeManager
 from dl_core.utils import ArtifactManager
 
-from .rendering import GridRenderer, write_animation
+from .rendering import make_grid_renderer, write_animation
 
 
 @register_episode_manager("robotics")
@@ -40,6 +40,30 @@ class RoboticsEpisodeManager(StandardEpisodeManager):
             "Rendered pixels per grid cell.",
             default=48,
         ),
+        config_field(
+            "renderer_name",
+            "str",
+            "Registered grid renderer used for episode media.",
+            default="grid",
+        ),
+        config_field(
+            "actor_shape",
+            "str",
+            "Rendered actor shape: circle, square, or triangle.",
+            default="circle",
+        ),
+        config_field(
+            "goal_shape",
+            "str",
+            "Rendered hollow goal shape: circle, square, or triangle.",
+            default="square",
+        ),
+        config_field(
+            "show_actor_ids",
+            "bool",
+            "Draw actor identity labels in rendered media.",
+            default=True,
+        ),
     ]
 
     def __init__(
@@ -61,8 +85,14 @@ class RoboticsEpisodeManager(StandardEpisodeManager):
             raise ValueError("fps must be positive")
         if self.media_format in {"gif", "both"} and self.fps > 100:
             raise ValueError("GIF fps cannot exceed 100")
-        self.renderer = GridRenderer(
-            cell_size=self.config.get("cell_size", 48)
+        self.renderer = make_grid_renderer(
+            {
+                "name": self.config.get("renderer_name", "grid"),
+                "cell_size": self.config.get("cell_size", 48),
+                "actor_shape": self.config.get("actor_shape", "circle"),
+                "goal_shape": self.config.get("goal_shape", "square"),
+                "show_actor_ids": self.config.get("show_actor_ids", True),
+            }
         )
 
     def summarize_episode(
