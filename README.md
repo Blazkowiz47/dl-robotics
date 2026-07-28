@@ -9,18 +9,15 @@ Fast, reproducible 2D robotics environments for
 pip install deep-learning-robotics
 ```
 
-Version `0.0.5` requires `deep-learning-core>=0.0.34,<0.1`.
+Version `0.0.6` requires `deep-learning-core>=0.0.35,<0.2`.
 
-## What's New in 0.0.5?
+## What's New in 0.0.6?
 
-- all researcher override points now have public names, including observation
-  `build()`, environment `build_info()`, and renderer marker hooks
-- custom actor and goal markers affect normal media and optimized resized model
-  observations consistently
-- renderers accept configurable palettes and expose `actor_color()` for dynamic
-  research encodings
-- redundant one-use public/private method pairs were removed from environments,
-  world physics, scenarios, and scaffold integration
+- the supported core range now includes the architecture-free
+  `deep-learning-core==0.1.0` trainer and registry boundary
+- generated robotics experiments now require the compatible `0.0.6` package
+- environment, observation, rendering, physics, and planning behavior are
+  unchanged
 
 Previous versions are recorded in the [release history](RELEASES.md).
 

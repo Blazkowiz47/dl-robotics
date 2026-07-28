@@ -42,7 +42,7 @@ class RoboticsInitExtension(InitExtension):
 
     def apply(self, context: ScaffoldContext) -> None:
         """Add robotics project files to the generated scaffold."""
-        context.add_dependency("deep-learning-robotics>=0.0.5,<0.1")
+        context.add_dependency("deep-learning-robotics>=0.0.6,<0.1")
         context.append_bootstrap_import("import dl_robotics  # noqa: F401")
         context.append_bootstrap_import("import rules  # noqa: F401")
         context.append_bootstrap_import("import scenarios  # noqa: F401")

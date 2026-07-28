@@ -3,6 +3,17 @@
 The main README shows only the latest release. This page preserves all
 published release notes.
 
+## 0.0.5
+
+- all researcher override points use public names, including observation
+  `build()`, environment `build_info()`, and renderer marker hooks
+- custom actor and goal markers affect media and optimized resized model
+  observations consistently
+- renderers accept configurable palettes and expose `actor_color()` for
+  dynamic research encodings
+- redundant one-use public/private method pairs were removed from environments,
+  world physics, scenarios, and scaffold integration
+
 ## 0.0.4
 
 - registered observation builders make semantic tensors or shape-controlled
