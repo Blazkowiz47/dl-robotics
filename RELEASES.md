@@ -13,6 +13,8 @@ published release notes.
   dynamic research encodings
 - redundant one-use public/private method pairs were removed from environments,
   world physics, scenarios, and scaffold integration
+- the core compatibility floor moved from `deep-learning-core>=0.0.28,<0.1`
+  to `deep-learning-core>=0.0.34,<0.1`
 
 ## 0.0.4
 
